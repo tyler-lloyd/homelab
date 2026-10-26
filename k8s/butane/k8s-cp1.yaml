@@ -1,0 +1,70 @@
+variant: flatcar
+version: 1.1.0
+ignition:
+  config:
+    merge:
+      - local: ign/30_base-ha-init.ign
+storage:
+  files:
+    - path: /etc/hostname
+      overwrite: true
+      contents:
+        inline: k8s-cp1
+    - path: /etc/systemd/network/00-eth0.network
+      contents:
+        inline: |
+          [Match]
+          Name=eth0
+
+          [Network]
+          Address=192.168.1.21/24
+          Gateway=192.168.1.1
+          DNS=1.1.1.1
+          DNS=8.8.8.8
+    - path: /etc/kubernetes/node-env.conf
+      contents:
+        inline: |
+          NODE_IP=192.168.1.21
+    # Pin the node IP so the kubelet never picks up the keepalived VIP
+    - path: /etc/sysconfig/kubelet
+      contents:
+        inline: |
+          KUBELET_EXTRA_ARGS=--node-ip=192.168.1.21
+    - path: /etc/keepalived/keepalived.conf
+      mode: 0644
+      contents:
+        inline: |
+          global_defs {
+              router_id k8s-cp1
+              enable_script_security
+              script_user root
+          }
+          vrrp_script check_apiserver {
+              # /etc is mounted noexec on Flatcar, so run curl directly rather than a script
+              script "/usr/bin/curl -sfk --max-time 2 -o /dev/null https://127.0.0.1:6444/readyz"
+              interval 3
+              weight -2
+              fall 10
+              rise 2
+          }
+          vrrp_instance VI_1 {
+              state MASTER
+              interface eth0
+              virtual_router_id 51
+              priority 101
+              unicast_src_ip 192.168.1.21
+              unicast_peer {
+                  192.168.1.22
+                  192.168.1.23
+              }
+              authentication {
+                  auth_type PASS
+                  auth_pass kubevip
+              }
+              virtual_ipaddress {
+                  192.168.1.20/32
+              }
+              track_script {
+                  check_apiserver
+              }
+          }

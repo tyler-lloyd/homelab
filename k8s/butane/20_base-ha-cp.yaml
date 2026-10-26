@@ -1,0 +1,106 @@
+variant: flatcar
+version: 1.1.0
+ignition:
+  config:
+    merge:
+      - local: ign/10_base-ha.ign
+      - local: ign/00_base-k8s-pki.ign
+passwd:
+  users:
+    # haproxy.service runs as this user. The sysext ships a sysusers.d entry
+    # for it, but systemd-sysusers runs before sysexts are merged at boot.
+    - name: haproxy
+      system: true
+      no_create_home: true
+      home_dir: /var/lib/haproxy
+      shell: /sbin/nologin
+storage:
+  links:
+    # keepalived + haproxy come from the sysext bakery, so no podman/Quadlet is needed
+    - path: /etc/extensions/keepalived.raw
+      target: /opt/extensions/keepalived/keepalived-v2.4.3-x86-64.raw
+      hard: false
+    - path: /etc/extensions/haproxy.raw
+      target: /opt/extensions/haproxy/haproxy-3.4.7-x86-64.raw
+      hard: false
+  files:
+    - path: /opt/extensions/keepalived/keepalived-v2.4.3-x86-64.raw
+      mode: 0644
+      contents:
+        source: https://extensions.flatcar.org/extensions/keepalived-v2.4.3-x86-64.raw
+        verification:
+          hash: sha256-80cdce42b899eacbfe26b74792baa4a5b111dcfdbc8ff50f69ca7e4b7a18df75
+    - path: /opt/extensions/haproxy/haproxy-3.4.7-x86-64.raw
+      mode: 0644
+      contents:
+        source: https://extensions.flatcar.org/extensions/haproxy-3.4.7-x86-64.raw
+        verification:
+          hash: sha256-716b175d7abbb5775d8e54849c5dbb5b42b7dad44c340fbc8147ed893044f2df
+    - path: /opt/cilium/cilium-linux-amd64.tar.gz
+      mode: 0644
+      contents:
+        source: https://github.com/cilium/cilium-cli/releases/download/v0.20.1/cilium-linux-amd64.tar.gz
+        verification:
+          hash: sha256-24e817dcfcc8a12e325ce7547617bcbcf171c5b0b335bb24d2bb1207ba047f61
+    # Only VRRP is used; skip keepalived's IPVS checker process
+    - path: /etc/sysconfig/keepalived
+      mode: 0644
+      contents:
+        inline: |
+          KEEPALIVED_OPTIONS="-D --vrrp"
+    - path: /etc/haproxy/haproxy.cfg
+      mode: 0644
+      contents:
+        inline: |
+          global
+              log stdout format raw local0
+
+          defaults
+              mode                    tcp
+              log                     global
+              option                  tcplog
+              option                  dontlognull
+              retries                 1
+              timeout connect         5s
+              timeout client          1h
+              timeout server          1h
+
+          # Bound on all addresses (not just the VIP) so HAProxy runs on every
+          # control plane node regardless of which one currently holds the VIP.
+          frontend apiserver
+              bind :6444
+              default_backend apiserver-backend
+
+          backend apiserver-backend
+              balance roundrobin
+              option httpchk
+              http-check send meth GET uri /readyz
+              http-check expect status 200
+              default-server check check-ssl verify none inter 5s fall 3 rise 2
+              server k8s-cp1 192.168.1.21:6443
+              server k8s-cp2 192.168.1.22:6443
+              server k8s-cp3 192.168.1.23:6443
+systemd:
+  units:
+    # The haproxy sysext doesn't hook itself into multi-user.target like keepalived does
+    - name: multi-user.target
+      dropins:
+        - name: 10-haproxy.conf
+          contents: |
+            [Unit]
+            Upholds=haproxy.service
+    - name: cilium-cli-setup.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install the Cilium CLI
+        ConditionPathExists=!/opt/bin/cilium
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=true
+        ExecStart=/usr/bin/mkdir -p /opt/bin
+        ExecStart=/usr/bin/tar -C /opt/bin -xzf /opt/cilium/cilium-linux-amd64.tar.gz cilium
+
+        [Install]
+        WantedBy=multi-user.target

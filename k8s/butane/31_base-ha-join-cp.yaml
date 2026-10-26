@@ -1,0 +1,43 @@
+variant: flatcar
+version: 1.1.0
+ignition:
+  config:
+    merge:
+      - local: ign/20_base-ha-cp.ign
+systemd:
+  units:
+    - name: kubeadm.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=kubeadm join (additional control plane node)
+        Wants=network-online.target
+        After=network-online.target crio.service keepalived.service haproxy.service
+        Requires=crio.service
+        ConditionPathExists=!/etc/kubernetes/kubelet.conf
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=true
+        TimeoutStartSec=infinity
+        Restart=on-failure
+        RestartSec=30
+        EnvironmentFile=/etc/kubernetes/kubeadm-env.conf
+        EnvironmentFile=/etc/kubernetes/certs.conf
+        EnvironmentFile=/etc/kubernetes/node-env.conf
+        ExecStartPre=/usr/bin/kubeadm config images pull --kubernetes-version ${K8S_VERSION} --cri-socket ${CRI_SOCKET}
+        # Join one control plane node at a time: wait until the previous one
+        # (WAIT_FOR_CP) serves a ready API, i.e. its etcd member is promoted.
+        ExecStartPre=/usr/bin/sh -c 'until curl -sfk --max-time 5 -o /dev/null https://${WAIT_FOR_CP}:6443/readyz; do sleep 5; done'
+        ExecStart=/usr/bin/kubeadm join ${K8S_APISERVER_URL}:${K8S_APISERVER_PORT} \
+          --token ${K8S_TOKEN} \
+          --discovery-token-ca-cert-hash ${K8S_HASH} \
+          --cri-socket ${CRI_SOCKET} \
+          --control-plane \
+          --apiserver-advertise-address ${NODE_IP} \
+          --ignore-preflight-errors=FileAvailable--etc-kubernetes-pki-ca.crt
+        ExecStartPost=/usr/bin/install -d -o core -g core /home/core/.kube
+        ExecStartPost=/usr/bin/install -o core -g core -m 0600 /etc/kubernetes/admin.conf /home/core/.kube/config
+
+        [Install]
+        WantedBy=multi-user.target

@@ -1,0 +1,32 @@
+variant: flatcar
+version: 1.1.0
+ignition:
+  config:
+    merge:
+      - local: ign/32_base-ha-join.ign
+storage:
+  files:
+    - path: /etc/hostname
+      overwrite: true
+      contents:
+        inline: k8s-worker1
+    - path: /etc/systemd/network/00-eth0.network
+      contents:
+        inline: |
+          [Match]
+          Name=eth0
+
+          [Network]
+          Address=192.168.1.24/24
+          Gateway=192.168.1.1
+          DNS=1.1.1.1
+          DNS=8.8.8.8
+    - path: /etc/kubernetes/node-env.conf
+      contents:
+        inline: |
+          NODE_IP=192.168.1.24
+    # Pin the node IP so the kubelet never picks up the keepalived VIP
+    - path: /etc/sysconfig/kubelet
+      contents:
+        inline: |
+          KUBELET_EXTRA_ARGS=--node-ip=192.168.1.24

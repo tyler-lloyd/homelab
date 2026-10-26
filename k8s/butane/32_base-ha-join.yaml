@@ -1,0 +1,36 @@
+variant: flatcar
+version: 1.1.0
+ignition:
+  config:
+    merge:
+      - local: ign/10_base-ha.ign
+systemd:
+  units:
+    - name: kubeadm.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=kubeadm join (worker node)
+        Wants=network-online.target
+        After=network-online.target crio.service
+        Requires=crio.service
+        ConditionPathExists=!/etc/kubernetes/kubelet.conf
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=true
+        TimeoutStartSec=infinity
+        Restart=on-failure
+        RestartSec=30
+        EnvironmentFile=/etc/kubernetes/kubeadm-env.conf
+        EnvironmentFile=/etc/kubernetes/certs.conf
+        ExecStartPre=/usr/bin/kubeadm config images pull --kubernetes-version ${K8S_VERSION} --cri-socket ${CRI_SOCKET}
+        # Wait until the API behind the VIP is up
+        ExecStartPre=/usr/bin/sh -c 'until curl -sfk --max-time 5 -o /dev/null https://${K8S_APISERVER_URL}:${K8S_APISERVER_PORT}/readyz; do sleep 5; done'
+        ExecStart=/usr/bin/kubeadm join ${K8S_APISERVER_URL}:${K8S_APISERVER_PORT} \
+          --token ${K8S_TOKEN} \
+          --discovery-token-ca-cert-hash ${K8S_HASH} \
+          --cri-socket ${CRI_SOCKET}
+
+        [Install]
+        WantedBy=multi-user.target

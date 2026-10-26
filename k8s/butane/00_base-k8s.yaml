@@ -1,0 +1,47 @@
+variant: flatcar
+version: 1.1.0
+storage:
+  links:
+    # Use CRI-O from the sysext bakery instead of the built-in docker/containerd
+    - path: /etc/extensions/docker-flatcar.raw
+      target: /dev/null
+      overwrite: true
+    - path: /etc/extensions/containerd-flatcar.raw
+      target: /dev/null
+      overwrite: true
+    - path: /etc/extensions/crio.raw
+      target: /opt/extensions/crio/crio-v1.37.2-x86-64.raw
+      hard: false
+    - path: /etc/extensions/kubernetes.raw
+      target: /opt/extensions/kubernetes/kubernetes-v1.37.1-x86-64.raw
+      hard: false
+  files:
+    - path: /opt/extensions/crio/crio-v1.37.2-x86-64.raw
+      mode: 0644
+      contents:
+        source: https://extensions.flatcar.org/extensions/crio-v1.37.2-x86-64.raw
+        verification:
+          hash: sha256-a436e91ee6577a7e75880620bc9c8baed3f1c90f47c8d53e0f08914741c1fe92
+    - path: /opt/extensions/kubernetes/kubernetes-v1.37.1-x86-64.raw
+      mode: 0644
+      contents:
+        source: https://extensions.flatcar.org/extensions/kubernetes-v1.37.1-x86-64.raw
+        verification:
+          hash: sha256-75072a32a1d87cfbe67907a0f6ebe3f0a860c2b2e15dbf1d8a354d5162e63b3b
+    # CRI-O refuses to pull images without a signature policy
+    - path: /etc/containers/policy.json
+      mode: 0644
+      contents:
+        inline: |
+          {
+            "default": [
+              {
+                "type": "insecureAcceptAnything"
+              }
+            ]
+          }
+systemd:
+  units:
+    - name: locksmithd.service
+      # NOTE: To coordinate node reboots for OS updates, use Kured.
+      mask: true

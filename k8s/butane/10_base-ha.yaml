@@ -1,0 +1,27 @@
+variant: flatcar
+version: 1.1.0
+ignition:
+  config:
+    merge:
+      - local: ign/00_base-k8s.ign
+      - local: ign/00_base-k8s-token.ign
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFWQDU76xmrS05SQ9tnHk9uX5gmDyzjBRGW+O3kSKQdm tyler@cachyos-x8664
+storage:
+  files:
+    # Cluster-wide settings shared by every node. K8S_VERSION must match the
+    # kubernetes sysext in 00_base-k8s.yaml.
+    - path: /etc/kubernetes/kubeadm-env.conf
+      mode: 0644
+      contents:
+        inline: |
+          K8S_VERSION=v1.37.1
+          K8S_APISERVER_URL=192.168.1.20
+          K8S_APISERVER_PORT=6444
+          K8S_POD_CIDR=100.100.0.0/16
+          K8S_SERVICE_CIDR=172.16.0.0/16
+          CRI_SOCKET=unix:///var/run/crio/crio.sock
+          CILIUM_VERSION=1.20.2
