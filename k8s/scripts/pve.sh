@@ -36,11 +36,17 @@ forget_host_key() {
 nodes() { awk '!/^#/ && NF { print $1 }' nodes.conf; }
 
 lookup() {
-  read -r name vmid host ip cores memory disk < <(awk -v n="$1" '!/^#/ && $1 == n' nodes.conf) || true
+  read -r name vmid host ip cores memory disk gpu < <(awk -v n="$1" '!/^#/ && $1 == n' nodes.conf) || true
   if [[ ${name:-} != "$1" ]]; then
     echo "unknown node '$1' (see nodes.conf)" >&2
     exit 1
   fi
+  gpu=${gpu:--}
+}
+
+# Prints the host driver bound to $gpu on $host, "none", or "missing"
+gpu_driver() {
+  pve "$host" "d=/sys/bus/pci/devices/$gpu.0; if [ ! -e \$d ]; then echo missing; elif [ -L \$d/driver ]; then basename \$(readlink \$d/driver); else echo none; fi"
 }
 
 # Prints "missing", "ours" or "foreign" depending on what owns $vmid on $host
@@ -81,6 +87,21 @@ create() {
     *) echo "$name: VM $vmid on $host belongs to another VM; pick a different vmid in nodes.conf" >&2; exit 1 ;;
   esac
 
+  # Passed-through memory is pinned, so ballooning is off for GPU nodes. The GPU
+  # must already be on vfio-pci: Proxmox would otherwise try to rip it away from
+  # a live host driver (e.g. nvidia serving LXC containers).
+  local gpu_args=
+  if [[ $gpu != - ]]; then
+    local driver
+    driver=$(gpu_driver)
+    case $driver in
+      vfio-pci|none) ;;
+      missing) echo "$name: no PCI device $gpu on $host" >&2; exit 1 ;;
+      *) echo "$name: $gpu on $host is bound to '$driver', not vfio-pci; see 'GPU nodes' in README.md" >&2; exit 1 ;;
+    esac
+    gpu_args="--hostpci0 $gpu,pcie=1 --balloon 0"
+  fi
+
   scp -q "$ign" "$PVE_USER@$host:$SNIPPET_DIR/$name.ign"
   pve "$host" bash -s <<EOF
 set -euo pipefail
@@ -94,7 +115,7 @@ qm create $vmid --name $name --tags k8s --onboot 1 \\
   --virtio0 $STORAGE:0,import-from=$IMAGE,discard=on --boot order=virtio0 \\
   --scsihw virtio-scsi-pci --scsi0 $STORAGE:cloudinit \\
   --cicustom user=$SNIPPET_STORAGE:snippets/$name.ign \\
-  --serial0 socket --agent enabled=1 \\
+  --serial0 socket --agent enabled=1 $gpu_args \\
   2>&1 | grep -v '^transferred '
 qm disk resize $vmid virtio0 $disk
 qm start $vmid

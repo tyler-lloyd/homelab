@@ -4,6 +4,7 @@ ignition:
   config:
     merge:
       - local: ign/32_base-ha-join.ign
+      - local: ign/40_gpu-nvidia.ign
 storage:
   files:
     - path: /etc/hostname
@@ -25,8 +26,9 @@ storage:
       contents:
         inline: |
           NODE_IP=192.168.1.24
-    # Pin the node IP so the kubelet never picks up the keepalived VIP
+    # Pin the node IP so the kubelet never picks up the keepalived VIP. The
+    # label schedules the NVIDIA device plugin here.
     - path: /etc/sysconfig/kubelet
       contents:
         inline: |
-          KUBELET_EXTRA_ARGS=--node-ip=192.168.1.24
+          KUBELET_EXTRA_ARGS=--node-ip=192.168.1.24 --node-labels=nvidia.com/gpu.present=true

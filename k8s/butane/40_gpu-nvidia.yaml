@@ -1,0 +1,61 @@
+variant: flatcar
+version: 1.1.0
+# NVIDIA GPU support, merged by nodes that have a GPU passed through (see the
+# gpu column in nodes.conf). Independent of the node's role layer.
+storage:
+  links:
+    - path: /etc/extensions/nvidia-runtime.raw
+      target: /opt/extensions/nvidia-runtime/nvidia-runtime-v1.19.1-x86-64.raw
+      hard: false
+  files:
+    # Flatcar's prebuilt, signed driver sysext. It is built for each Flatcar
+    # release and fetched again on OS updates, so it always matches the kernel.
+    # The open kernel modules cover Turing and newer (the RTX A400 is Ampere).
+    - path: /etc/flatcar/enabled-sysext.conf
+      mode: 0644
+      contents:
+        inline: |
+          nvidia-drivers-570-open
+    # NVIDIA container toolkit (nvidia-container-runtime + hook)
+    - path: /opt/extensions/nvidia-runtime/nvidia-runtime-v1.19.1-x86-64.raw
+      mode: 0644
+      contents:
+        source: https://extensions.flatcar.org/extensions/nvidia-runtime-v1.19.1-x86-64.raw
+        verification:
+          hash: sha256-b0445124e0700711b6c05d60fea7b93d9049451cb8ef575ea70b4474a1d8879c
+    # CRI-O's crun isn't on PATH, so point the NVIDIA runtime straight at it.
+    # Unset keys keep the toolkit's defaults.
+    - path: /etc/nvidia-container-runtime/config.toml
+      mode: 0644
+      contents:
+        inline: |
+          [nvidia-container-runtime]
+          runtimes = ["/usr/libexec/crio/crun"]
+    # Wrap crun with the NVIDIA runtime for every container on this node. It
+    # injects the GPU, driver libraries and NVENC/NVDEC into containers that ask
+    # for it via NVIDIA_VISIBLE_DEVICES (set by the device plugin for pods
+    # requesting nvidia.com/gpu); everything else runs on plain crun.
+    - path: /etc/crio/crio.conf.d/99-nvidia.conf
+      mode: 0644
+      contents:
+        inline: |
+          [crio.runtime]
+          default_runtime = "nvidia"
+
+          [crio.runtime.runtimes.nvidia]
+          runtime_path = "/usr/bin/nvidia-container-runtime"
+          runtime_type = "oci"
+          runtime_root = "/run/crun"
+          monitor_path = "/usr/libexec/crio/conmon"
+systemd:
+  units:
+    # Loads the kernel modules from the driver sysext and creates /dev/nvidia*
+    - name: nvidia.service
+      enabled: true
+    - name: crio.service
+      dropins:
+        - name: 10-nvidia.conf
+          contents: |
+            [Unit]
+            Wants=nvidia.service
+            After=nvidia.service

@@ -6,6 +6,7 @@
 #   make down      destroy all VMs (or down-<node> for one)
 #   make status    show VM state on the Proxmox hosts
 #   make kubeconfig  fetch the admin kubeconfig into ./kubeconfig
+#   make gpu-plugin  install the NVIDIA device plugin (for nodes with a gpu in nodes.conf)
 
 BUTANE ?= butane
 
@@ -58,8 +59,11 @@ kubeconfig:
 	chmod 600 $@.tmp
 	mv $@.tmp $@
 
+gpu-plugin:
+	kubectl --kubeconfig kubeconfig apply -f manifests/nvidia-device-plugin.yaml
+
 clean:
 	rm -rf ign
 
-.PHONY: all secrets image up down status kubeconfig clean
+.PHONY: all secrets image up down status kubeconfig gpu-plugin clean
 .PRECIOUS: ign/%.ign
