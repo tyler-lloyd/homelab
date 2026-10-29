@@ -1,0 +1,28 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cilium
+  annotations:
+    # Deleting this file must never uninstall the CNI
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  interval: 1h
+  # Same name + namespace as the release cilium-install.service created on
+  # k8s-cp1, so Flux upgrades that release in place instead of installing anew.
+  releaseName: cilium
+  chart:
+    spec:
+      chart: cilium
+      # Keep in step with CILIUM_VERSION in butane/10_base-ha.yaml (day-0 install)
+      version: 1.20.2
+      sourceRef:
+        kind: HelmRepository
+        name: cilium
+  valuesFrom:
+    - kind: ConfigMap
+      name: cilium-values
+      valuesKey: values.yaml
+  upgrade:
+    remediation:
+      retries: 3
+      strategy: rollback

@@ -1,0 +1,16 @@
+# Cilium Helm values, used both by the day-0 install on k8s-cp1
+# (cilium-install.service, see butane/30_base-ha-init.yaml) and by the Flux
+# HelmRelease that manages Cilium afterwards. Everything the cilium CLI would
+# otherwise auto-detect is pinned here, so both always render the same thing.
+kubeProxyReplacement: true
+# The API VIP (HAProxy); must match K8S_APISERVER_URL/PORT in butane/10_base-ha.yaml
+k8sServiceHost: 192.168.1.20
+k8sServicePort: 6444
+ipam:
+  mode: kubernetes
+routingMode: tunnel
+tunnelProtocol: vxlan
+cluster:
+  name: kubernetes
+operator:
+  replicas: 1

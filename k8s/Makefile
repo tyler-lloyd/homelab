@@ -7,6 +7,7 @@
 #   make status    show VM state on the Proxmox hosts
 #   make kubeconfig  fetch the admin kubeconfig into ./kubeconfig
 #   make gpu-plugin  install the NVIDIA device plugin (for nodes with a gpu in nodes.conf)
+#   make flux      install Flux, which then syncs clusters/homelab from git
 
 BUTANE ?= butane
 
@@ -31,6 +32,7 @@ $(SECRETS) &:
 ign/10_base-ha.ign: ign/00_base-k8s.ign ign/00_base-k8s-token.ign
 ign/20_base-ha-cp.ign: ign/10_base-ha.ign ign/00_base-k8s-pki.ign
 ign/30_base-ha-init.ign ign/31_base-ha-join-cp.ign: ign/20_base-ha-cp.ign
+ign/30_base-ha-init.ign: infrastructure/controllers/cilium/values.yaml
 ign/32_base-ha-join.ign: ign/10_base-ha.ign
 $(NODE_IGN): $(BASE_IGN)
 
@@ -62,8 +64,17 @@ kubeconfig:
 gpu-plugin:
 	kubectl --kubeconfig kubeconfig apply -f manifests/nvidia-device-plugin.yaml
 
+# Install Flux from clusters/homelab/flux-system; from then on it syncs itself
+# and everything else under clusters/homelab from git. The first apply creates
+# the CRDs but not the GitRepository/Kustomization that need them.
+flux:
+	-kubectl --kubeconfig kubeconfig apply --server-side -k clusters/homelab/flux-system
+	kubectl --kubeconfig kubeconfig wait --for=condition=established --timeout=60s \
+	  crd -l app.kubernetes.io/part-of=flux
+	kubectl --kubeconfig kubeconfig apply --server-side -k clusters/homelab/flux-system
+
 clean:
 	rm -rf ign
 
-.PHONY: all secrets image up down status kubeconfig gpu-plugin clean
+.PHONY: all secrets image up down status kubeconfig gpu-plugin flux clean
 .PRECIOUS: ign/%.ign

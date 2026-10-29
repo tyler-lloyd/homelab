@@ -100,6 +100,44 @@ spec:
 Then pick NVENC under Dashboard → Playback → Transcoding in Jellyfin. To check the
 node: `ssh core@192.168.1.24 nvidia-smi`, `journalctl -u nvidia`.
 
+## GitOps (Flux)
+
+Workloads are deployed by [Flux](https://fluxcd.io) from this repo's `main` branch.
+`make flux` installs it once. After that, Flux pulls
+`http://192.168.1.235:3001/tyler/homelab.git` every minute and applies
+`k8s/clusters/homelab/`, including its own manifests in `flux-system/`.
+
+```
+clusters/homelab/
+  flux-system/           Flux itself (gotk-components.yaml is generated, don't edit)
+  infrastructure.yaml    Kustomization infra-controllers -> infrastructure/controllers
+infrastructure/
+  controllers/cilium/    HelmRelease adopting the day-0 Cilium install
+```
+
+No credentials are involved because the repo is public. That also means that
+**nothing secret can be committed unencrypted**. If the repo goes private, give the
+`flux-system` GitRepository a `secretRef` with a read-only token.
+
+Flux's controllers tolerate the control-plane taint, so they keep reconciling
+while workers are down. Check on them with `flux get all -A` and `flux events -A`.
+
+**Cilium** is installed on day 0 by `cilium-install.service` on k8s-cp1. Flux then
+adopts that Helm release (`cilium` in `kube-system`) and owns it from then on.
+Both use `infrastructure/controllers/cilium/values.yaml`, so Flux's first
+reconcile doesn't change the CNI. Change Cilium by committing to that file or to
+the HelmRelease's chart version. `CILIUM_VERSION` only affects new clusters. The
+HelmRelease has pruning disabled, so removing it from git leaves Cilium installed.
+
+**Upgrading Flux:** regenerate the components with the new CLI and commit. Flux
+applies the result to itself.
+
+```sh
+flux install --export \
+  --components=source-controller,kustomize-controller,helm-controller,notification-controller \
+  > clusters/homelab/flux-system/gotk-components.yaml
+```
+
 ## Changes from the upstream guide
 
 - VMs are created with `qm` and get Ignition via a cloud-init snippet (`--cicustom user=`).

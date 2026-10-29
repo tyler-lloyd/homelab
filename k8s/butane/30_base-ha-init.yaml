@@ -4,6 +4,13 @@ ignition:
   config:
     merge:
       - local: ign/20_base-ha-cp.ign
+storage:
+  files:
+    # Shared with the Flux HelmRelease that takes Cilium over once Flux is running
+    - path: /etc/cilium/values.yaml
+      mode: 0644
+      contents:
+        local: infrastructure/controllers/cilium/values.yaml
 systemd:
   units:
     - name: kubeadm.service
@@ -62,10 +69,7 @@ systemd:
         EnvironmentFile=/etc/kubernetes/kubeadm-env.conf
         ExecStart=/opt/bin/cilium install \
           --version ${CILIUM_VERSION} \
-          --set kubeProxyReplacement=true \
-          --set k8sServiceHost=${K8S_APISERVER_URL} \
-          --set k8sServicePort=${K8S_APISERVER_PORT} \
-          --set ipam.mode=kubernetes
+          --values /etc/cilium/values.yaml
         ExecStartPost=/usr/bin/touch /var/lib/cilium-installed
 
         [Install]
