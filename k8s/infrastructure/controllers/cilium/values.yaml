@@ -14,3 +14,12 @@ cluster:
   name: kubernetes
 operator:
   replicas: 1
+  rollOutPods: true
+# Without these, a config change updates the ConfigMap but the running agents
+# and operator never pick it up, while the HelmRelease still reports success.
+rollOutCiliumPods: true
+# Answer ARP for LoadBalancer IPs (pools and announcement policy live in
+# infrastructure/configs/cilium). The default client rate limit (10 QPS)
+# covers ~50 announced services at the default 5s lease renewal.
+l2announcements:
+  enabled: true

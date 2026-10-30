@@ -110,10 +110,11 @@ Workloads are deployed by [Flux](https://fluxcd.io) from this repo's `main` bran
 ```
 clusters/homelab/
   flux-system/           Flux itself (gotk-components.yaml is generated, don't edit)
-  infrastructure.yaml    Kustomization infra-controllers -> infrastructure/controllers
+  infrastructure.yaml    Kustomizations infra-controllers -> infra-configs (waits for it)
 infrastructure/
   controllers/cilium/       HelmRelease adopting the day-0 Cilium install
   controllers/proxmox-csi/  Proxmox CSI plugin + default StorageClass
+  configs/cilium/           LoadBalancer IP pool + L2 announcement policy
 ```
 
 No credentials are involved because the repo is public. That also means that
@@ -179,6 +180,30 @@ The API token is `kubernetes-csi@pve!kubernetes-csi` with role `CSI`
 on `/`. It uses privilege separation, so the token needs its own ACL: granting the
 role to the user alone isn't enough. To edit the config, run
 `sops infrastructure/controllers/proxmox-csi/config.sops.yaml`.
+
+## LoadBalancer IPs (Cilium)
+
+`type: LoadBalancer` Services get a LAN IP from 192.168.1.31–.40. Cilium hands out the
+address (LB-IPAM), and one worker answers ARP for it (L2 announcements), so no
+MetalLB is needed. Keep the range out of the router's DHCP pool.
+
+```yaml
+metadata:
+  annotations:
+    lbipam.cilium.io/ips: 192.168.1.31   # pin an address; omit for the next free one
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Cluster        # the default; don't use Local (see below)
+```
+
+- **One node holds each IP**, chosen through a Kubernetes lease among nodes matching
+  `configs/cilium/l2-announcement-policy.yaml` (workers only). If that node dies,
+  another takes over after 10–20 s.
+- **Don't use `externalTrafficPolicy: Local`.** L2 announcements don't check which nodes
+  run the Service's pods. With `Local`, the node holding the IP may have no pod and
+  will drop the traffic.
+- To check: `kubectl get svc -A | grep LoadBalancer` lists the IPs, and
+  `kubectl -n kube-system get lease | grep l2announce` shows which node holds each one.
 
 ## Changes from the upstream guide
 
