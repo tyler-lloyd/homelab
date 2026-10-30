@@ -122,6 +122,19 @@ No credentials are involved because the repo is public. That also means that
 Flux's controllers tolerate the control-plane taint, so they keep reconciling
 while workers are down. Check on them with `flux get all -A` and `flux events -A`.
 
+**Secrets** are committed as `*.sops.yaml` files encrypted with [SOPS](https://getsops.io)
+and [age](https://age-encryption.org). Only `data`/`stringData` is encrypted (see the
+repo's `/.sops.yaml`), so names and namespaces stay readable. To encrypt a new
+Secret, run `sops -e -i foo.sops.yaml`. To edit one, run `sops foo.sops.yaml`.
+Any Flux Kustomization that applies them needs a `decryption:` block like
+`infra-controllers` has.
+
+The private key is `age.agekey`, which is git-ignored. `make age.agekey` generates
+it once per cluster, and `make flux` loads it into the cluster as
+`flux-system/sops-age`. **Back it up somewhere outside this machine and the
+cluster.** Without it, nobody can decrypt the secrets in git, and a rebuilt
+cluster can't apply them.
+
 **Cilium** is installed on day 0 by `cilium-install.service` on k8s-cp1. Flux then
 adopts that Helm release (`cilium` in `kube-system`) and owns it from then on.
 Both use `infrastructure/controllers/cilium/values.yaml`, so Flux's first

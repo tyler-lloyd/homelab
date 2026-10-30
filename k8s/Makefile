@@ -8,6 +8,7 @@
 #   make kubeconfig  fetch the admin kubeconfig into ./kubeconfig
 #   make gpu-plugin  install the NVIDIA device plugin (for nodes with a gpu in nodes.conf)
 #   make flux      install Flux, which then syncs clusters/homelab from git
+#   make age.agekey  generate the SOPS/age key for secrets in git (once, back it up)
 
 BUTANE ?= butane
 
@@ -16,6 +17,7 @@ PVE_HOSTS := $(shell awk '!/^[#]/ && NF { print $$3 }' nodes.conf | sort -u)
 FIRST_CP  := $(shell awk '!/^[#]/ && NF { print $$4; exit }' nodes.conf)
 
 SECRETS  := butane/00_base-k8s-token.yaml butane/00_base-k8s-pki.yaml
+AGE_KEY  := age.agekey
 BASE_IGN := $(patsubst butane/%.yaml,ign/%.ign,$(sort $(wildcard butane/[0-9]*.yaml) $(SECRETS)))
 NODE_IGN := $(patsubst %,ign/%.ign,$(NODES))
 
@@ -64,14 +66,25 @@ kubeconfig:
 gpu-plugin:
 	kubectl --kubeconfig kubeconfig apply -f manifests/nvidia-device-plugin.yaml
 
+# The *.sops.yaml secrets in git are encrypted to this key, so it is only made
+# on request: a missing key must be restored from backup, not replaced.
+$(AGE_KEY):
+	age-keygen -o $@
+
 # Install Flux from clusters/homelab/flux-system; from then on it syncs itself
 # and everything else under clusters/homelab from git. The first apply creates
-# the CRDs but not the GitRepository/Kustomization that need them.
+# the CRDs (and namespace) but not the GitRepository/Kustomization that need them.
+# Also gives Flux the age key as flux-system/sops-age. Safe to re-run: the
+# applies take back fields Flux owns by then, with the same values from git.
 flux:
-	-kubectl --kubeconfig kubeconfig apply --server-side -k clusters/homelab/flux-system
+	@test -f $(AGE_KEY) || { echo "$(AGE_KEY) missing: restore it from backup (or 'make $(AGE_KEY)' for a new cluster)" >&2; exit 1; }
+	-kubectl --kubeconfig kubeconfig apply --server-side --force-conflicts -k clusters/homelab/flux-system
 	kubectl --kubeconfig kubeconfig wait --for=condition=established --timeout=60s \
 	  crd -l app.kubernetes.io/part-of=flux
-	kubectl --kubeconfig kubeconfig apply --server-side -k clusters/homelab/flux-system
+	kubectl --kubeconfig kubeconfig -n flux-system create secret generic sops-age \
+	  --from-file=age.agekey=$(AGE_KEY) --dry-run=client -o yaml \
+	  | kubectl --kubeconfig kubeconfig apply -f -
+	kubectl --kubeconfig kubeconfig apply --server-side --force-conflicts -k clusters/homelab/flux-system
 
 clean:
 	rm -rf ign

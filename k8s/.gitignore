@@ -4,3 +4,4 @@
 /butane/00_base-k8s-token.yaml
 /butane/00_base-k8s-pki.yaml
 /kubeconfig
+/age.agekey

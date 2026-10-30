@@ -1,0 +1,7 @@
+# Kubernetes Secrets committed as *.sops.yaml. Only data/stringData is
+# encrypted, so Flux and kustomize can still read the rest. The private key is
+# k8s/age.agekey (git-ignored); Flux has it as flux-system/sops-age.
+creation_rules:
+  - path_regex: \.sops\.ya?ml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1xh7de6kcaptd4088v7ukkfgaa2lhchzyahsrujfr5f53ejxzjgfsd37msp
