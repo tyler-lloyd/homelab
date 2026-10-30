@@ -27,8 +27,10 @@ storage:
         inline: |
           NODE_IP=192.168.1.24
     # Pin the node IP so the kubelet never picks up the keepalived VIP. The
-    # label schedules the NVIDIA device plugin here.
+    # labels schedule the NVIDIA device plugin here, and tell Proxmox CSI which
+    # Proxmox host the VM is on: region is the name in its config, zone the
+    # exact Proxmox node name.
     - path: /etc/sysconfig/kubelet
       contents:
         inline: |
-          KUBELET_EXTRA_ARGS=--node-ip=192.168.1.24 --node-labels=nvidia.com/gpu.present=true
+          KUBELET_EXTRA_ARGS=--node-ip=192.168.1.24 --node-labels=nvidia.com/gpu.present=true,topology.kubernetes.io/region=pve,topology.kubernetes.io/zone=pve

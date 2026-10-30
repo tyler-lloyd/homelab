@@ -1,0 +1,27 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: proxmox-csi-plugin
+spec:
+  interval: 1h
+  chartRef:
+    kind: OCIRepository
+    name: proxmox-csi-plugin
+  values:
+    # config.sops.yaml: the Proxmox API URL + token for each region
+    existingConfigSecret: proxmox-csi-plugin
+    node:
+      # Only nodes on a Proxmox host listed in config.sops.yaml can attach disks.
+      # The kubelet sets these labels (butane/k8s-worker1.yaml).
+      nodeSelector:
+        topology.kubernetes.io/region: pve
+    storageClass:
+      - name: proxmox-local-lvm
+        storage: local-lvm
+        fstype: ext4
+        # NVMe-backed thin pool: also enables discard, so freed blocks return to it
+        ssd: true
+        # A PVC pruned from git (or deleted by hand) leaves its Proxmox disk behind
+        reclaimPolicy: Retain
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"

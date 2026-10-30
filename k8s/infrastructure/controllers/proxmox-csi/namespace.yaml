@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: csi-proxmox
+  labels:
+    # The node plugin is privileged (it hot-plugs and mounts disks)
+    pod-security.kubernetes.io/enforce: privileged
