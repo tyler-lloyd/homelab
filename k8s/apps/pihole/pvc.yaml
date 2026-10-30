@@ -1,0 +1,11 @@
+# /etc/pihole: pihole.toml, gravity.db (blocklists) and pihole-FTL.db (query
+# history, kept 91 days by default). Retained by the StorageClass if deleted.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pihole
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi

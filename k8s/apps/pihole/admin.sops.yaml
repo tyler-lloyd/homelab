@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: pihole-admin
+    namespace: pihole
+stringData:
+    #ENC[AES256_GCM,data:YG0QLi5zJBZ5F+lql7gPyBLQlH77fM7pamfeF0e5,iv:geMxLbFlNA20ogm/xjaB66U5pH/jh9V9+bbiDL/pOOg=,tag:ryPOsZXdodFFsGZQY1jTGQ==,type:comment]
+    password: ENC[AES256_GCM,data:GSnhlaiGP6OmoJAaVQlcLmcbJ8YtYXz0RzE7A+EEVvI=,iv:T3syv2i+X/NDBdODRy3VmfFvl+OD2D9y+NTMF8+xqUA=,tag:UcNm2NUkLmSnjEr/HMyW+g==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB6SXdXcnVIT2I4VjFERWFQ
+            NFFGbzFNend4Si9KZTdrTHhBYXlMd1ltcUF3ClZITGcva1E0cXcza0dZUXU3cmFS
+            RklLTm45SW1XMUdReE9keW9mclJTblEKLS0tIGpxSjZLZnpISnB0UEdvQm1EWjNB
+            UWR3OFVmeVM4eHFERk14OHJuRXhnWFkKOecWgx23DsfOdEvQ8ch7WW8HM1a8H9um
+            dXGKMJFifB3UdfygREflSUfIRp/qH/BO2la+r6OnpKFE9e3wICU84w==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1xh7de6kcaptd4088v7ukkfgaa2lhchzyahsrujfr5f53ejxzjgfsd37msp
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-10-30T01:53:00Z"
+    mac: ENC[AES256_GCM,data:HQOAJLzZBF4fj3l+wAZvXGvcswSZ7xYzMVlx59dXtFwhGS3BzunTk4610xE1qVPKZ46Nv1bsQe2wKknHdxZ61UiAopSP/kOmKDSnCTTyfWYZPWnksjHLZtJG5LEXtdGHfFwItfIpK4S9WLTIfuxJeA9m7RrGB5avnt/786bssL0=,iv:LKTJqWsQ3XbswTe5khQK2DD4bV2rY25ANLLD31gfu1A=,tag:ny1GS2+zQ3vp1c4C2deY6w==,type:str]
+    version: 3.13.3

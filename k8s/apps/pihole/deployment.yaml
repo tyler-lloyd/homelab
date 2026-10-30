@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pihole
+spec:
+  replicas: 1
+  # The volume attaches to one VM at a time, and Pi-hole's databases can't be
+  # shared, so the old pod must be gone before the new one starts.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: pihole
+  template:
+    metadata:
+      labels:
+        app: pihole
+    spec:
+      hostname: pihole
+      containers:
+        - name: pihole
+          image: pihole/pihole:2026.09.0@sha256:5b9c8cf51de7d6d3f2240dbe72baf5f06e1fd39cb4d77a99fab4fa13e23bd1be
+          # Settings given here are read-only in the web UI; change them in git
+          env:
+            - name: TZ
+              value: America/New_York
+            - name: FTLCONF_webserver_api_password
+              valueFrom:
+                secretKeyRef:
+                  name: pihole-admin
+                  key: password
+            - name: FTLCONF_dns_upstreams
+              value: 1.1.1.1;9.9.9.9
+            # LAN clients aren't on the pod's subnet, so the default (LOCAL)
+            # would refuse them. Only the LAN can reach the Service.
+            - name: FTLCONF_dns_listeningMode
+              value: ALL
+          ports:
+            - name: dns-udp
+              containerPort: 53
+              protocol: UDP
+            - name: dns-tcp
+              containerPort: 53
+              protocol: TCP
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: dns-tcp
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: dns-tcp
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /etc/pihole
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: pihole

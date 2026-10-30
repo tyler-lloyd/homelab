@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pihole
+  annotations:
+    # The LAN's DNS server needs a fixed address (set it in the router's DHCP)
+    lbipam.cilium.io/ips: 192.168.1.31
+spec:
+  type: LoadBalancer
+  # Must stay Cluster with Cilium L2 announcements. Clients still show up with
+  # their own IPs while the pod runs on the node holding .31 (the only worker).
+  externalTrafficPolicy: Cluster
+  selector:
+    app: pihole
+  ports:
+    - name: dns-udp
+      port: 53
+      targetPort: dns-udp
+      protocol: UDP
+    - name: dns-tcp
+      port: 53
+      targetPort: dns-tcp
+      protocol: TCP
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
