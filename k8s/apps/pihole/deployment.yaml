@@ -35,6 +35,12 @@ spec:
             # would refuse them. Only the LAN can reach the Service.
             - name: FTLCONF_dns_listeningMode
               value: ALL
+          # The entrypoint setcap's pihole-FTL (CHOWN, NET_BIND_SERVICE) so FTL
+          # can run as the pihole user. CRI-O, unlike Docker, doesn't grant
+          # SETFCAP by default, and without it the container exits.
+          securityContext:
+            capabilities:
+              add: [SETFCAP]
           ports:
             - name: dns-udp
               containerPort: 53
