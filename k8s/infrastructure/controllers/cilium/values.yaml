@@ -23,3 +23,9 @@ rollOutCiliumPods: true
 # covers ~50 announced services at the default 5s lease renewal.
 l2announcements:
   enabled: true
+# Let other CNI plugins chain themselves into Cilium's CNI config. With the
+# default (true), Cilium owns /etc/cni/net.d: it regenerates
+# 05-cilium.conflist on any activity in that directory, which reverts
+# whatever a chained plugin adds to it.
+cni:
+  exclusive: false
