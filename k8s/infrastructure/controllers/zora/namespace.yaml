@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zora-system
+  labels:
+    # The agent is a host-network pod that writes the node's CNI directories
+    pod-security.kubernetes.io/enforce: privileged

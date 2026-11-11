@@ -1,0 +1,15 @@
+# zora publishes no chart repository; the chart lives in its git repo.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: zora
+spec:
+  interval: 24h
+  url: https://github.com/tyler-lloyd/zora
+  ref:
+    # Upgrade by changing this tag. The chart's image tag follows it.
+    tag: v0.1.0
+  # Only the chart is needed
+  ignore: |
+    /*
+    !/deploy/helm/zora

@@ -1,0 +1,34 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: zora
+spec:
+  interval: 1h
+  # zora chains itself into Cilium's CNI config, which needs Cilium's
+  # cni.exclusive=false (see ../cilium/values.yaml).
+  dependsOn:
+    - name: cilium
+      namespace: kube-system
+  chart:
+    spec:
+      chart: ./deploy/helm/zora
+      sourceRef:
+        kind: GitRepository
+        name: zora
+  values:
+    cluster:
+      # Must match the cluster's pod CIDR (--cluster-cidr). The Service CIDR
+      # is read from the cluster.
+      podCIDRs: ["100.100.0.0/16"]
+    # Namespaces whose pods may use zora: it can read Secrets only in these.
+    # Each must exist before it is listed here. None yet.
+    secrets:
+      namespaces: []
+    # Pods in these namespaces never go through zora, so the cluster's own
+    # components keep starting even if zora is broken on a node.
+    excludeNamespaces:
+      - kube-system
+      - flux-system
+      - csi-proxmox
+      - cilium-secrets
+      - pihole

@@ -115,6 +115,7 @@ clusters/homelab/
 infrastructure/
   controllers/cilium/       HelmRelease adopting the day-0 Cilium install
   controllers/proxmox-csi/  Proxmox CSI plugin + default StorageClass
+  controllers/zora/         zora: per-pod WireGuard tunnels
   configs/cilium/           LoadBalancer IP pool + L2 announcement policy
 apps/
   pihole/                   LAN DNS at 192.168.1.31
@@ -183,6 +184,27 @@ The API token is `kubernetes-csi@pve!kubernetes-csi` with role `CSI`
 on `/`. It uses privilege separation, so the token needs its own ACL: granting the
 role to the user alone isn't enough. To edit the config, run
 `sops infrastructure/controllers/proxmox-csi/config.sops.yaml`.
+
+## Per-pod WireGuard tunnels (zora)
+
+[zora](https://github.com/tyler-lloyd/zora) gives a pod its own WireGuard tunnel:
+put a wg-quick config in a Secret under the key `wg0.conf`, and annotate the pod
+with `zora.io/wireguard-secret: <secret name>`. Traffic to pods, Services and
+nodes stays out of the tunnel.
+
+- **Enabling a namespace:** zora can read Secrets only in the namespaces listed
+  under `secrets.namespaces` in `infrastructure/controllers/zora/helmrelease.yaml`.
+  The namespace has to exist first, so add it in the same commit or an earlier one.
+- **Excluded namespaces** (`excludeNamespaces`) never go through zora. Pods in
+  every other namespace do, annotated or not, so if a node's `zora-agent` is down,
+  new pods there wait in `ContainerCreating` until it is back. Running pods are
+  unaffected.
+- **Cilium** must keep `cni.exclusive: false`, or it removes zora from the nodes'
+  CNI config. zora's agents then report not-ready and say why.
+- **Upgrading:** change the tag in `infrastructure/controllers/zora/gitrepository.yaml`.
+- **Removing:** delete `controllers/zora` from git. Flux uninstalls the release,
+  which takes zora out of every node's CNI config first. Pods keep their tunnels
+  until they restart.
 
 ## LoadBalancer IPs (Cilium)
 
