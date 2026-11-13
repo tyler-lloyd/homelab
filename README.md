@@ -112,3 +112,8 @@ Proxmox CSI config (`docs/storage.md`), the SSH key in
 `butane/10_base-ha.yaml` and the Flux repo URL in `gotk-sync.yaml`, and replace the
 `*.sops.yaml` files with your own, encrypted to your own key (`make age-key`, then put
 its public key in `.sops.yaml`).
+
+## License
+
+[MIT](LICENSE). `k8s/manifests/nvidia-device-plugin.yaml` is NVIDIA's, under the
+Apache License 2.0 as its header says.
