@@ -15,8 +15,8 @@ The disks show up on the host as `vm-9999-pvc-<uuid>`.
 - **Node labels:** nodes need `topology.kubernetes.io/region=pve` (the region name in
   `k8s/infrastructure/controllers/proxmox-csi/config.sops.yaml`) and
   `topology.kubernetes.io/zone=pve` (the Proxmox node name, which is case-sensitive).
-  The kubelet sets them through `--node-labels` in `/etc/sysconfig/kubelet`. Keep them
-  when copying `butane/k8s-worker1.yaml`. The node plugin only runs on nodes in the `pve` region.
+  The kubelet sets them from the node's `labels` column in `nodes.conf`, so give a new
+  worker on that host the same two. The node plugin only runs on nodes in the `pve` region.
 - **Workers on 192.168.1.10** would need a second entry under `clusters:` in the
   config, with a token created on that host and its own region name.
 

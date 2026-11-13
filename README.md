@@ -22,11 +22,12 @@ services 172.16.0.0/16. LoadBalancer Services get 192.168.1.31–.40.
 ## Layout
 
 ```
-Makefile, nodes.conf    entry point; which VM goes on which Proxmox host
-butane/                 the nodes: Flatcar configs, layered, one file per node
-scripts/                VM lifecycle on Proxmox (pve.sh), CA + token generation
+Makefile, nodes.conf    entry point; the nodes, their IPs and Proxmox hosts
+butane/                 the nodes: Flatcar config layers, with no addresses in them
+scripts/                VM lifecycle on Proxmox, per-node config and CA generation
 k8s/                    the workloads: everything Flux applies
-  clusters/homelab/       Flux itself, and what it syncs in which order
+  clusters/homelab/       Flux itself, what it syncs in which order, and
+                          cluster.env: the LAN, API VIP and pod/service CIDRs
   infrastructure/         controllers (Cilium, Proxmox CSI, zora), then their configs
   apps/                   Pi-hole
   manifests/              applied by hand: NVIDIA device plugin (make gpu-plugin)
@@ -106,7 +107,8 @@ public key in `butane/10_base-ha.yaml`). None of that is a credential.
 ## Using it for your own lab
 
 It's my lab's config, not a template, but most of it carries over. You'd change the
-IPs (`nodes.conf`, `butane/`, `k8s/infrastructure/`), the SSH key in
+addresses (`nodes.conf` and `k8s/clusters/homelab/cluster.env` for the nodes; the
+workloads under `k8s/` still name theirs, listed in `cluster.env`), the SSH key in
 `butane/10_base-ha.yaml` and the Flux repo URL in `gotk-sync.yaml`, and replace the
 `*.sops.yaml` files with your own, encrypted to your own key (`make age-key`, then put
 its public key in `.sops.yaml`).

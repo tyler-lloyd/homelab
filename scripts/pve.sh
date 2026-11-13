@@ -14,12 +14,14 @@ PVE_USER=${PVE_USER:-root}
 CHANNEL=${CHANNEL:-stable}
 STORAGE=${STORAGE:-local-lvm}
 BRIDGE=${BRIDGE:-vmbr0}
-GATEWAY=${GATEWAY:-192.168.1.1}
-NAMESERVERS=${NAMESERVERS:-1.1.1.1 8.8.8.8}
 SNIPPET_STORAGE=${SNIPPET_STORAGE:-local}
 SNIPPET_DIR=${SNIPPET_DIR:-/var/lib/vz/snippets}
 IMAGE_DIR=${IMAGE_DIR:-/var/lib/vz/template/flatcar}
 IMAGE=$IMAGE_DIR/flatcar_production_proxmoxve_image.img
+
+# The LAN's prefix length, gateway and DNS servers
+# shellcheck source=../k8s/clusters/homelab/cluster.env
+. k8s/clusters/homelab/cluster.env
 
 pve() {
   local host=$1
@@ -36,7 +38,7 @@ forget_host_key() {
 nodes() { awk '!/^#/ && NF { print $1 }' nodes.conf; }
 
 lookup() {
-  read -r name vmid host ip cores memory disk gpu < <(awk -v n="$1" '!/^#/ && $1 == n' nodes.conf) || true
+  read -r name _ vmid host ip cores memory disk gpu _ < <(awk -v n="$1" '!/^#/ && $1 == n' nodes.conf) || true
   if [[ ${name:-} != "$1" ]]; then
     echo "unknown node '$1' (see nodes.conf)" >&2
     exit 1
@@ -111,7 +113,7 @@ qm create $vmid --name $name --tags k8s --onboot 1 \\
   --arch x86_64 --machine q35 --args '-machine sata=off' \\
   --cpu host --cores $cores --memory $memory \\
   --net0 virtio,bridge=$BRIDGE \\
-  --ipconfig0 ip=$ip/24,gw=$GATEWAY --nameserver '$NAMESERVERS' \\
+  --ipconfig0 ip=$ip/$LAN_PREFIX_LEN,gw=$LAN_GATEWAY --nameserver '${DNS_SERVERS//,/ }' \\
   --virtio0 $STORAGE:0,import-from=$IMAGE,discard=on --boot order=virtio0 \\
   --scsihw virtio-scsi-pci --scsi0 $STORAGE:cloudinit \\
   --cicustom user=$SNIPPET_STORAGE:snippets/$name.ign \\

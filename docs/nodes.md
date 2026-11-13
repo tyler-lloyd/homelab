@@ -5,8 +5,14 @@ guide (libvirt) for two Proxmox VE hosts: control plane on one, workers on the o
 
 ## How a node is built
 
-`nodes.conf` says where each VM goes (Proxmox host, VMID, IP, size, GPU). Each node's
-OS config is `butane/<node>.yaml`, which merges numbered layers:
+Two files describe the cluster, and nothing else names a node address:
+
+- `nodes.conf` has a line per node: its role, IP, Proxmox host, VMID, size, GPU and
+  extra labels.
+- `k8s/clusters/homelab/cluster.env` has what the nodes share: the LAN's prefix
+  length, gateway and DNS servers, the API VIP, and the pod and service CIDRs.
+
+A node's OS config is built from layers in `butane/`, chosen by its role:
 
 ```
 00_base-k8s            CRI-O + Kubernetes sysexts              (every node)
@@ -14,28 +20,41 @@ OS config is `butane/<node>.yaml`, which merges numbered layers:
 00_base-k8s-pki        CA and service-account keys, secrets/   (control plane)
 10_base-ha             SSH key, cluster-wide settings (versions, VIP, CIDRs)
 20_base-ha-cp          keepalived, HAProxy, Cilium CLI         (control plane)
-30_base-ha-init        kubeadm init + day-0 Cilium install     (k8s-cp1)
-31_base-ha-join-cp     kubeadm join --control-plane            (k8s-cp2, k8s-cp3)
+30_base-ha-init        kubeadm init + day-0 Cilium install     (first control plane node)
+31_base-ha-join-cp     kubeadm join --control-plane            (other control plane nodes)
 32_base-ha-join        kubeadm join                            (workers)
-40_gpu-nvidia          NVIDIA driver + container runtime       (GPU nodes, see gpu.md)
+40_gpu-nvidia          NVIDIA driver + container runtime       (nodes with a gpu, see gpu.md)
 ```
 
-`make` compiles them with `butane` into `ign/<node>.ign`, and `make up-<node>` uploads
+The layers hold no addresses. `scripts/render-butane.sh` fills those in: it replaces
+the `@NAME@` placeholders in the layers, and generates each node's own part (hostname,
+network, kubelet arguments, keepalived peers) from its line in `nodes.conf`. To see what
+a node gets, run `scripts/render-butane.sh node <name>`.
+
+`make` compiles the result with `butane` into `ign/<node>.ign`, and `make up-<node>` uploads
 that to the node's Proxmox host as a snippet and creates the VM from the Flatcar image
-(`scripts/pve.sh`). Storage/bridge/gateway defaults live at the top of `scripts/pve.sh`
+(`scripts/pve.sh`). Storage and bridge defaults live at the top of `scripts/pve.sh`
 and can be overridden by env (e.g. `STORAGE=local-zfs make up`).
 
-Bootstrap order happens on its own: cp1 runs `kubeadm init` and installs Cilium,
-cp2 joins once cp1's API is ready, cp3 once cp2's is, and workers once the VIP
-answers. Progress: `ssh core@192.168.1.21 journalctl -fu kubeadm -u cilium-install`.
+Bootstrap order happens on its own, following the order in `nodes.conf`: the first
+control plane node runs `kubeadm init` and installs Cilium, each later one joins once
+the one before it has a ready API, and workers join once the VIP answers. The first
+also starts out holding the VIP, with the others backing it up in the same order. Progress:
+`ssh core@192.168.1.21 journalctl -fu kubeadm -u cilium-install`.
 
 ## Adding or rebuilding a node
 
-- **Add a worker:** .25–.30 are free. Copy `butane/k8s-worker1.yaml` (dropping the GPU
-  bits, keeping the topology labels, see [storage.md](storage.md)), add a line to
-  `nodes.conf`, then `make up-<node>`.
+- **Add a worker:** .25–.30 are free. Add a line to `nodes.conf` (with the topology
+  labels if it should use Proxmox volumes, see [storage.md](storage.md)), then
+  `make up-<node>`.
+- **Add a control plane node:** add its line after the existing ones, then rebuild the
+  other control plane nodes one at a time too: each lists the others as keepalived
+  peers and HAProxy backends.
 - **Rebuild a node:** `make down-<node> up-<node>`. Rebuilding a *control plane* node
   also needs its old etcd member removed first (see below).
+- **Use another network:** change `cluster.env` and the IPs in `nodes.conf`, for a new
+  cluster only. Until the workloads read `cluster.env` as well, the addresses they name
+  have to be changed by hand; the file lists them.
 - **Upgrade Kubernetes/CRI-O:** the versions and sysext hashes are in
   `butane/00_base-k8s.yaml`, and `K8S_VERSION` in `butane/10_base-ha.yaml` must match.
 

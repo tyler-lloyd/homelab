@@ -12,7 +12,7 @@ spec:
     existingConfigSecret: proxmox-csi-plugin
     node:
       # Only nodes on a Proxmox host listed in config.sops.yaml can attach disks.
-      # The kubelet sets these labels (butane/k8s-worker1.yaml).
+      # The kubelet sets these labels (the labels column in nodes.conf).
       nodeSelector:
         topology.kubernetes.io/region: pve
     storageClass:

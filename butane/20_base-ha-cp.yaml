@@ -48,6 +48,8 @@ storage:
       contents:
         inline: |
           KEEPALIVED_OPTIONS="-D --vrrp"
+    # scripts/render-butane.sh fills in the backend: one server line for
+    # every control plane node in nodes.conf
     - path: /etc/haproxy/haproxy.cfg
       mode: 0644
       contents:
@@ -77,9 +79,7 @@ storage:
               http-check send meth GET uri /readyz
               http-check expect status 200
               default-server check check-ssl verify none inter 5s fall 3 rise 2
-              server k8s-cp1 192.168.1.21:6443
-              server k8s-cp2 192.168.1.22:6443
-              server k8s-cp3 192.168.1.23:6443
+              @CONTROL_PLANE_SERVERS@
 systemd:
   units:
     # The haproxy sysext doesn't hook itself into multi-user.target like keepalived does

@@ -12,9 +12,13 @@
 
 BUTANE ?= butane
 
+# A failed render must fail the build, not hand butane half a config
+SHELL       := bash
+.SHELLFLAGS := -o pipefail -c
+
 NODES     := $(shell awk '!/^[#]/ && NF { print $$1 }' nodes.conf)
-PVE_HOSTS := $(shell awk '!/^[#]/ && NF { print $$3 }' nodes.conf | sort -u)
-FIRST_CP  := $(shell awk '!/^[#]/ && NF { print $$4; exit }' nodes.conf)
+PVE_HOSTS := $(shell awk '!/^[#]/ && NF { print $$4 }' nodes.conf | sort -u)
+FIRST_CP  := $(shell awk '!/^[#]/ && $$2 == "control-plane" { print $$5; exit }' nodes.conf)
 
 # Everything local and secret (git-ignored). Back this directory up.
 SECRETS_DIR := secrets
@@ -23,6 +27,11 @@ AGE_KEY     := $(SECRETS_DIR)/age.agekey
 KUBECONFIG  := $(SECRETS_DIR)/kubeconfig
 KUBECTL     := kubectl --kubeconfig $(KUBECONFIG)
 FLUX_DIR    := k8s/clusters/homelab/flux-system
+
+# Every address comes from these two, through scripts/render-butane.sh
+CLUSTER_ENV := k8s/clusters/homelab/cluster.env
+RENDER      := scripts/render-butane.sh
+ADDRESSES   := nodes.conf $(CLUSTER_ENV) $(RENDER)
 
 BASE_IGN := $(patsubst butane/%.yaml,ign/%.ign,$(sort $(wildcard butane/[0-9]*.yaml))) \
             $(patsubst $(SECRETS_DIR)/%.yaml,ign/%.ign,$(SECRETS))
@@ -45,16 +54,26 @@ ign/20_base-ha-cp.ign: ign/10_base-ha.ign ign/00_base-k8s-pki.ign
 ign/30_base-ha-init.ign ign/31_base-ha-join-cp.ign: ign/20_base-ha-cp.ign
 ign/30_base-ha-init.ign: k8s/infrastructure/controllers/cilium/values.yaml
 ign/32_base-ha-join.ign: ign/10_base-ha.ign
-$(NODE_IGN): $(BASE_IGN)
 
 # --files-dir is the repo root, so `local:` paths in butane/ are relative to it
-BUILD_IGN = @mkdir -p ign; $(BUTANE) --strict --pretty --files-dir . $< > $@.tmp && mv $@.tmp $@
+TO_IGN = $(BUTANE) --strict --pretty --files-dir . > $@.tmp
 
-ign/%.ign: butane/%.yaml
-	$(BUILD_IGN)
+# A node has no file in butane/: its config is generated from its line in
+# nodes.conf, and merges the layers its role needs.
+$(NODE_IGN): ign/%.ign: $(ADDRESSES) $(BASE_IGN)
+	@mkdir -p ign
+	./$(RENDER) node $* | $(TO_IGN)
+	mv $@.tmp $@
+
+ign/%.ign: butane/%.yaml $(ADDRESSES)
+	@mkdir -p ign
+	./$(RENDER) layer $< | $(TO_IGN)
+	mv $@.tmp $@
 
 ign/%.ign: $(SECRETS_DIR)/%.yaml
-	$(BUILD_IGN)
+	@mkdir -p ign
+	$(TO_IGN) < $<
+	mv $@.tmp $@
 
 image: $(addprefix image-,$(PVE_HOSTS))
 image-%:

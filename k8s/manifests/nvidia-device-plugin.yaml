@@ -33,7 +33,7 @@ spec:
       labels:
         name: nvidia-device-plugin-ds
     spec:
-      # Set by the kubelet of GPU nodes (KUBELET_EXTRA_ARGS in butane/<node>.yaml)
+      # Set by the kubelet of nodes with a gpu in nodes.conf
       nodeSelector:
         nvidia.com/gpu.present: "true"
       tolerations:

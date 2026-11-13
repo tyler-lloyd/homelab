@@ -1,10 +1,10 @@
 # GPU nodes
 
 A node gets a GPU by passing its PCI address in the `gpu` column of `nodes.conf`
-(`pve.sh` adds `hostpci0 <addr>,pcie=1`, all functions, ballooning off) and by merging
-`ign/40_gpu-nvidia.ign` in its `butane/<node>.yaml` and adding
-`--node-labels=nvidia.com/gpu.present=true` to its `KUBELET_EXTRA_ARGS`
-(see `k8s-worker1.yaml`). That layer installs Flatcar's prebuilt NVIDIA driver sysext
+(`-` for none). That does three things: `pve.sh` passes the device through
+(`hostpci0 <addr>,pcie=1`, all functions, ballooning off), the node's config merges
+`butane/40_gpu-nvidia.yaml`, and its kubelet sets the label
+`nvidia.com/gpu.present=true`. The layer installs Flatcar's prebuilt NVIDIA driver sysext
 (`nvidia-drivers-570-open`) and the NVIDIA container toolkit, and makes
 `nvidia-container-runtime` (wrapping crun) the node's default CRI-O runtime.
 Once the node has joined, `make gpu-plugin` installs the NVIDIA device plugin
