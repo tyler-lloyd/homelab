@@ -10,7 +10,7 @@ storage:
     - path: /etc/cilium/values.yaml
       mode: 0644
       contents:
-        local: infrastructure/controllers/cilium/values.yaml
+        local: k8s/infrastructure/controllers/cilium/values.yaml
 systemd:
   units:
     - name: kubeadm.service

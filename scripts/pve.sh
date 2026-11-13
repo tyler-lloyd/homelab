@@ -97,7 +97,7 @@ create() {
     case $driver in
       vfio-pci|none) ;;
       missing) echo "$name: no PCI device $gpu on $host" >&2; exit 1 ;;
-      *) echo "$name: $gpu on $host is bound to '$driver', not vfio-pci; see 'GPU nodes' in README.md" >&2; exit 1 ;;
+      *) echo "$name: $gpu on $host is bound to '$driver', not vfio-pci; see docs/gpu.md" >&2; exit 1 ;;
     esac
     gpu_args="--hostpci0 $gpu,pcie=1 --balloon 0"
   fi

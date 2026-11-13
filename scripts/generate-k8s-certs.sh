@@ -2,16 +2,19 @@
 # Pre-generate the cluster CAs, service-account key and bootstrap token so every
 # node can bootstrap from Ignition alone (nothing is copied between nodes).
 # Output (treat both like passwords):
-#   butane/00_base-k8s-token.yaml  join token + CA hash, for every node
-#   butane/00_base-k8s-pki.yaml    CA/SA keys, for control plane nodes only
+#   secrets/00_base-k8s-token.yaml  join token + CA hash, for every node
+#   secrets/00_base-k8s-pki.yaml    CA/SA keys, for control plane nodes only
+# Both are Butane layers like the ones in butane/, kept apart from them so
+# that nothing secret sits in a tracked directory.
 
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-cert_dir="./certs"
-token_yaml="butane/00_base-k8s-token.yaml"
-pki_yaml="butane/00_base-k8s-pki.yaml"
+secrets_dir="secrets"
+cert_dir="$secrets_dir/certs"
+token_yaml="$secrets_dir/00_base-k8s-token.yaml"
+pki_yaml="$secrets_dir/00_base-k8s-pki.yaml"
 days=3650
 
 if [[ ( -e $token_yaml || -e $pki_yaml ) && ${FORCE:-0} != 1 ]]; then
@@ -20,6 +23,7 @@ if [[ ( -e $token_yaml || -e $pki_yaml ) && ${FORCE:-0} != 1 ]]; then
 fi
 
 umask 077
+mkdir -p "$secrets_dir"
 rm -rf "$cert_dir"
 mkdir -p "$cert_dir"
 

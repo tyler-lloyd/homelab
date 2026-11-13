@@ -14,7 +14,7 @@ storage:
   files:
     # Cluster-wide settings shared by every node. K8S_VERSION must match the
     # kubernetes sysext in 00_base-k8s.yaml. CILIUM_VERSION is only the day-0
-    # install; Flux owns Cilium after that (infrastructure/controllers/cilium).
+    # install; Flux owns Cilium after that (k8s/infrastructure/controllers/cilium).
     - path: /etc/kubernetes/kubeadm-env.conf
       mode: 0644
       contents:

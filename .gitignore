@@ -1,0 +1,16 @@
+# Nothing secret is committed unencrypted (see README.md, "Secrets").
+#
+# Everything local and secret lives in secrets/: the SOPS/age key, the cluster
+# CAs and join token, and the admin kubeconfig. ign/ is build output with the
+# same secrets baked in.
+/secrets/
+/ign/
+
+# The same files wherever else they turn up, e.g. where they lived before
+# secrets/ existed (k8s/, k8s/butane/)
+*.agekey
+kubeconfig
+certs/
+ign/
+00_base-k8s-token.yaml
+00_base-k8s-pki.yaml
