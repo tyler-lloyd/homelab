@@ -22,6 +22,9 @@ spec:
     - kind: ConfigMap
       name: cilium-values
       valuesKey: values.yaml
+  # The one value that isn't in values.yaml (see there)
+  values:
+    k8sServiceHost: "${API_VIP}"
   upgrade:
     remediation:
       retries: 3

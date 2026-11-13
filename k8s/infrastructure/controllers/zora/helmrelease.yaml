@@ -17,9 +17,9 @@ spec:
         name: zora
   values:
     cluster:
-      # Must match the cluster's pod CIDR (--cluster-cidr). The Service CIDR
-      # is read from the cluster.
-      podCIDRs: ["100.100.0.0/16"]
+      # The cluster's pod CIDR (--cluster-cidr), from cluster.env. The Service
+      # CIDR is read from the cluster.
+      podCIDRs: ["${POD_CIDR}"]
     # Namespaces whose pods may use zora: it can read Secrets only in these.
     # Each must exist before it is listed here. None yet.
     secrets:

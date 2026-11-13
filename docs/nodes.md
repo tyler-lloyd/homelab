@@ -53,8 +53,8 @@ also starts out holding the VIP, with the others backing it up in the same order
 - **Rebuild a node:** `make down-<node> up-<node>`. Rebuilding a *control plane* node
   also needs its old etcd member removed first (see below).
 - **Use another network:** change `cluster.env` and the IPs in `nodes.conf`, for a new
-  cluster only. Until the workloads read `cluster.env` as well, the addresses they name
-  have to be changed by hand; the file lists them.
+  cluster only. The workloads take their addresses from `cluster.env` too (see
+  [flux.md](flux.md#addresses)).
 - **Upgrade Kubernetes/CRI-O:** the versions and sysext hashes are in
   `butane/00_base-k8s.yaml`, and `K8S_VERSION` in `butane/10_base-ha.yaml` must match.
 

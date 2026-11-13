@@ -1,11 +1,11 @@
-# LoadBalancer Service IPs on the LAN. Pin one with the annotation
-# lbipam.cilium.io/ips: 192.168.1.3x; otherwise the next free one is used.
-# Keep this range out of the router's DHCP pool.
+# LoadBalancer Service IPs on the LAN; the range is set in cluster.env. Pin
+# one with the annotation lbipam.cilium.io/ips; otherwise the next free one is
+# used. Keep this range out of the router's DHCP pool.
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: lan
 spec:
   blocks:
-    - start: 192.168.1.31
-      stop: 192.168.1.40
+    - start: "${LB_RANGE_START}"
+      stop: "${LB_RANGE_STOP}"

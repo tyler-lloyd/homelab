@@ -20,3 +20,8 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+  # ${NAME} in a manifest becomes the value from cluster.env
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

@@ -67,9 +67,11 @@ systemd:
         # The cilium CLI refuses to run without a cache directory
         Environment=HOME=/root
         EnvironmentFile=/etc/kubernetes/kubeadm-env.conf
+        # values.yaml leaves out the API VIP, as the HelmRelease does
         ExecStart=/opt/bin/cilium install \
           --version ${CILIUM_VERSION} \
-          --values /etc/cilium/values.yaml
+          --values /etc/cilium/values.yaml \
+          --set k8sServiceHost=${K8S_APISERVER_URL}
         ExecStartPost=/usr/bin/touch /var/lib/cilium-installed
 
         [Install]

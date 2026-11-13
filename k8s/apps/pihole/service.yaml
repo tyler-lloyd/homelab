@@ -3,8 +3,9 @@ kind: Service
 metadata:
   name: pihole
   annotations:
-    # The LAN's DNS server needs a fixed address (set it in the router's DHCP)
-    lbipam.cilium.io/ips: 192.168.1.31
+    # The LAN's DNS server needs a fixed address (set it in the router's DHCP).
+    # From cluster.env; must be inside the LoadBalancer range there.
+    lbipam.cilium.io/ips: "${PIHOLE_IP}"
 spec:
   type: LoadBalancer
   # Must stay Cluster with Cilium L2 announcements. Clients still show up with

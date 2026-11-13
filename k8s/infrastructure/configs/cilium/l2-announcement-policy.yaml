@@ -6,6 +6,10 @@ apiVersion: cilium.io/v2alpha1
 kind: CiliumL2AnnouncementPolicy
 metadata:
   name: lan
+  annotations:
+    # Nothing here comes from cluster.env, and the $ below must reach Cilium
+    # as written
+    kustomize.toolkit.fluxcd.io/substitute: disabled
 spec:
   nodeSelector:
     matchExpressions:

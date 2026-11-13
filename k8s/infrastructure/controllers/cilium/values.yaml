@@ -3,8 +3,10 @@
 # HelmRelease that manages Cilium afterwards. Everything the cilium CLI would
 # otherwise auto-detect is pinned here, so both always render the same thing.
 kubeProxyReplacement: true
-# The API VIP (HAProxy); must match K8S_APISERVER_URL/PORT in butane/10_base-ha.yaml
-k8sServiceHost: 192.168.1.20
+# The API server as Cilium reaches it: HAProxy on the API VIP. The host is not
+# set here because it comes from cluster.env: the HelmRelease and
+# cilium-install.service each pass k8sServiceHost themselves. The port must
+# match K8S_APISERVER_PORT in butane/10_base-ha.yaml.
 k8sServicePort: 6444
 ipam:
   mode: kubernetes

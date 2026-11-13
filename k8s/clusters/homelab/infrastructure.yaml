@@ -17,6 +17,11 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+  # ${NAME} in a manifest becomes the value from cluster.env
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
 ---
 # Objects that need the controllers' CRDs or features to exist first
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -40,3 +45,8 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+  # ${NAME} in a manifest becomes the value from cluster.env
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
