@@ -14,7 +14,7 @@ Clone it, put the secrets back, and `make` rebuilds the lot.
 | k8s-worker1 | 192.168.1.24 | 192.168.1.11 | 124  | RTX A400 ([GPU nodes](docs/gpu.md)) |
 
 Stack: Flatcar stable, Kubernetes v1.37.1 + CRI-O v1.37.2, keepalived and HAProxy
-(all as [sysext bakery](https://extensions.flatcar.org) extensions), Cilium 1.20.2
+(all as [sysext bakery](https://extensions.flatcar.org) extensions), Cilium 1.20.5
 replacing kube-proxy. The API is served at `https://192.168.1.20:6444` (HAProxy on
 every control plane node → kube-apiserver `:6443` on each). Pods use 100.100.0.0/16,
 services 172.16.0.0/16. LoadBalancer Services get 192.168.1.31–.40.

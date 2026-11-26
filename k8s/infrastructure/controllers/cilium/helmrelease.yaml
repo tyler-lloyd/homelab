@@ -14,7 +14,7 @@ spec:
     spec:
       chart: cilium
       # Keep in step with CILIUM_VERSION in butane/10_base-ha.yaml (day-0 install)
-      version: 1.20.2
+      version: 1.20.5
       sourceRef:
         kind: HelmRepository
         name: cilium

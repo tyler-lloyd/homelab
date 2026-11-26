@@ -26,4 +26,4 @@ storage:
           K8S_POD_CIDR=@POD_CIDR@
           K8S_SERVICE_CIDR=@SERVICE_CIDR@
           CRI_SOCKET=unix:///var/run/crio/crio.sock
-          CILIUM_VERSION=1.20.2
+          CILIUM_VERSION=1.20.5
